@@ -129,6 +129,9 @@
   <ItemGroup>
     <ClCompile Include="input.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="소스.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="input.h" />

@@ -2,6 +2,7 @@
 #define ROW_SIZE 180
 #define COLUMN_SIZE 60
 #include "input.h"
+#include "main.h"
 
 //using namespace std;
 
@@ -24,8 +25,8 @@ SMALL_RECT consoleScreenSize;
 // UI 최대 사이즈 설정값
 SMALL_RECT _UImaxSize;
 // 버퍼(화면) 2개 설정
-static HANDLE hScreen[2];
-static int nScreenIndex;
+HANDLE hScreen[2];
+bool bScreenIndex;
 
 
 /// <summary>
@@ -69,38 +70,95 @@ void initConsole()
 
 }
 
+HANDLE GetScreenHandle()
+{
+	int index = (bScreenIndex ? 1 : 0);
+
+	return hScreen[bScreenIndex];
+}
+
+
+void SetStdScreen()
+{
+	SetConsoleActiveScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE));
+}
+
+void SetBackScreen()
+{
+	SetConsoleActiveScreenBuffer(GetScreenHandle());
+}
 
 
 /// 버퍼 두개를 전환해주는 함수
 void ScreenFlipping()
 {
-	SetConsoleActiveScreenBuffer(hScreen[nScreenIndex]);
-	nScreenIndex = !nScreenIndex;
+	SetConsoleActiveScreenBuffer(GetScreenHandle());
+	bScreenIndex = !bScreenIndex;
 }
+
 
 
 /// 화면을 비우는 함수. 다음 버퍼로 전환할 때 이전 출력내용을 비워줘야한다
+//void ScreenClear()
+//{
+//	COORD coordScreen = { 0, 0 };
+//	DWORD dwConSize;
+//
+//
+//	// 콘솔 창을 공백으로 채우기
+//	FillConsoleOutputCharacterW(GetScreenHandle(), L' ', dwConSize, coordScreen, &dwConSize);
+//
+//	// 색상 속성을 지정하여 콘솔 창을 지우기
+//	WORD wColors = ((WORD)0 << 4) | (WORD)15; // 흰색 글자색, 검정 배경색
+//	FillConsoleOutputAttribute(GetScreenHandle(), wColors, dwConSize, coordScreen, &dwConSize);
+//}
+
 void ScreenClear()
-{// [가로줄에 전부 공백 채우기]를 세로줄 개수만큼 돌림
-	for (int i = 0; i < COLUMN_SIZE; i++)
-	{
-		COORD Coor = { 0, i };
-		DWORD dw;
-		// 공백을 화면크기만큼 입력해줘야함;;
-		FillConsoleOutputCharacter(hScreen[nScreenIndex], ' ', ROW_SIZE, Coor, &dw);
-	}
-	
-}
-
-
-/// 버퍼에 그림그리기
-void ScreenPrint(int x, int y, char* string)
 {
+	COORD coor = { 0,0 };
 	DWORD dw;
-	COORD CursorPosition = { x, y };
-	SetConsoleCursorPosition(hScreen[nScreenIndex], CursorPosition);
-	WriteFile(hScreen[nScreenIndex], string, strlen(string), &dw, NULL);
+
+	FillConsoleOutputCharacterW(GetScreenHandle(), L' ', dw, coor, &dw);
+	WORD wColors = ((WORD)0 << 4) | (WORD)15; // 흰색 글자색, 검정 배경색
+	FillConsoleOutputAttribute(GetScreenHandle(), wColors, dw, coor, &dw);
+		//문자 수가 화면 버퍼에서 지정된 행의 끝 이상으로 확장되면 다음행에 기록된다(자동으로 다음행으로 넘어가는듯)
+		//버퍼보다 문자 수가 큰 경우는 버퍼의 끝 까지만 기록된다
+		//작성된 위치의 특성 값은 변경되지 않는다(? ? ) 색 변경이 안되는건가
+	FillConsoleOutputCharacter(GetScreenHandle(), 'a', 180 * 60, coor, &dw);
+
+
+	FillConsoleOutputCharacter(GetScreenHandle(), ' ', 180 * 60, coor, &dw);
+
+	 ////[가로줄에 전부 공백 채우기] 를 세로줄 개수만큼 돌림
+		//for (int i = 0; i < COLUMN_SIZE; i++)
+		//{
+		//	coor.Y = i;
+		//	//공백을 화면크기만큼 입력해줘야함;;
+		//	for (int j = 0; j < ROW_SIZE; j++)
+		//	{
+		//		setColor(color_yellow, color_blue);
+		//		ScreenPrint(j, i, ' ', 1);
+		//	}
+
+		//	FillConsoleOutputCharacter(GetScreenHandle(), 'a', _UImaxSize.Right - _UImaxSize.Left + 5, coor, &dw);
+		//}
+
 }
+
+
+/// 버퍼에 그림그리기 (공백 두 칸 찍기)
+void ScreenPrint(int x, int y, const char* str, int length)
+{
+	DWORD dw;	// unsigned long 구조체
+	COORD CursorPosition = { x, y };
+	//char buffer[10];
+	//sprintf_s(buffer, "%c", c);
+
+	SetConsoleCursorPosition(GetScreenHandle(), CursorPosition);
+	// 2 는 문자열 길이
+	WriteFile(GetScreenHandle(), &str, length, &dw, NULL);
+}
+
 
 
 
@@ -112,19 +170,6 @@ void ScreenRelease()
 }
 
 
-/// 렌더 (직접적인 출력 부분)
-void Render()
-{
-	// 이전 출력 내용을 지운다
-	ScreenClear();
-
-	// 새로 출력할 내용을 작성한다
-
-
-	// 앞 뒤 버퍼를 뒤집는다
-	ScreenFlipping();
-
-}
 
 
 
@@ -162,25 +207,15 @@ void gotoXY(int x, int y)
 
 
 
-/// <summary>
-/// 색깔 팔레트
-/// </summary>
-const int color_black = 0;
-const int color_white = 15;
-const int color_green = 10;
-const int color_red = 12;
-const int color_yellow = 6;
-const int color_dark_white = 7;
-const int color_blue = 9;
-const int color_gray = 8;
+
 
 
 // 배경 색, 글꼴 색 지정
 void setColor(int backColor, int textColor)
 {
-	textColor = color_white;
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (backColor << 4) + textColor);
-	// SetConsoleTextAttribute(hScreen[nScreenIndex], (backColor << 4) + textColor);
+	//textColor = color_white;
+	//SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (backColor << 4) + textColor);
+	SetConsoleTextAttribute(GetScreenHandle(), (backColor << 4) + textColor);
 }
 
 
@@ -236,25 +271,28 @@ void DrawUpArrow(COORD pos, int color)
 //}
 
 
-//void ScreenDrawUpArrow(COORD pos, int color)
-//{
-//	for (int i = 0; i < 5; i++)
-//	{
-//		for (int j = 0; j < 5; j++)
-//		{
-//			gotoXY(pos.X + 2 * j, pos.Y + i);
-//			if (arr[i][j] == 0)
-//			{
-//				setColor(color_black, 15);
-//			}
-//			if (arr[i][j] == 1)
-//			{
-//				setColor(color, 15);
-//				printf("  ");
-//			}
-//		}
-//	}
-//}
+void ScreenDrawUpArrow(COORD pos, int color)
+{
+	//const char* c = '  ';
+	for (int i = 0; i < 5; i++)
+	{
+		for (int j = 0; j < 5; j++)
+		{
+			//ScreenPrint(pos.X + 2 * j, pos.Y + i, NULL);
+			////gotoXY(pos.X + 2 * j, pos.Y + i);
+			//if (arr[i][j] == 0)
+			//{
+			//	setColor(color_black, 15);
+			//}
+			if (arr[i][j] == 1)
+			{
+				setColor(color, 15);
+				ScreenPrint(pos.X + 2 * j, pos.Y + i, '  ', 2);
+				//printf("  ");
+			}
+		}
+	}
+}
 
 void DrawLeftArrow(COORD pos, int color)
 {
@@ -271,6 +309,21 @@ void DrawLeftArrow(COORD pos, int color)
 			{
 				setColor(color, 15);
 				printf("  ");
+			}
+		}
+	}
+}
+
+void ScreenDrawLeftArrow(COORD pos, int color)
+{
+	for (int i = 0; i < 5; i++)
+	{
+		for (int j = 0; j < 5; j++)
+		{
+			if (arr[i][j] == 1)
+			{
+				setColor(color, 15);
+				ScreenPrint(pos.X + 2 * i, pos.Y + j, '  ', 2);
 			}
 		}
 	}
@@ -296,6 +349,21 @@ void DrawRightArrow(COORD pos, int color)
 	}
 }
 
+void ScreenDrawRightArrow(COORD pos, int color)
+{
+	for (int i = 0; i < 5; i++)
+	{
+		for (int j = 0; j < 5; j++)
+		{
+			if (arr[i][j] == 1)
+			{
+				setColor(color, 15);
+				ScreenPrint(pos.X + 8 - 2 * i, pos.Y + j, '  ', 2);
+			}
+		}
+	}
+}
+
 void DrawDownArrow(COORD pos, int color)
 {
 	for (int i = 0; i < 5; i++)
@@ -316,6 +384,21 @@ void DrawDownArrow(COORD pos, int color)
 	}
 }
 
+void ScreenDrawDownArrow(COORD pos, int color)
+{
+	for (int i = 0; i < 5; i++)
+	{
+		for (int j = 0; j < 5; j++)
+		{
+			setColor(color_black, 15);
+			if (arr[i][j] == 1)
+			{
+				setColor(color, 15);
+				ScreenPrint(pos.X + 2 * j, pos.Y + 4 - i, '  ', 2);
+			}
+		}
+	}
+}
 
 
 
@@ -325,7 +408,7 @@ void DrawDownArrow(COORD pos, int color)
 /// 배열로 출력하자
 /// 0 이면 넘김, 1이면 공백을 출력하고 배경 색상 변경
 /// 인터페이스 상 키를 그린다! 키가 입력되면 색상이 활성화 됨
-void DrawKeyInterface()
+void ScreenDrawKeyInterface()
 {
 	// 인터페이스 출력 좌표 지정 
 	// 5x5 크기의 화살표. 출력의 시작은 좌측 상단 끝
@@ -380,10 +463,10 @@ void DrawKeyInterface()
 		colorRight = color_yellow;
 	}
 
-	DrawUpArrow(posUp, colorUp);
-	DrawRightArrow(posRight, colorRight);
-	DrawDownArrow(posDown, colorDown);
-	DrawLeftArrow(posLeft, colorLeft);
+	ScreenDrawUpArrow(posUp, colorUp);
+	ScreenDrawRightArrow(posRight, colorRight);
+	ScreenDrawDownArrow(posDown, colorDown);
+	ScreenDrawLeftArrow(posLeft, colorLeft);
 
 	/// 다른 함수로 정리함
 	{
@@ -522,21 +605,21 @@ ULONGLONG currentTime;
 // 이전시간 - 현재시간
 ULONGLONG deltaTime;
 
-int updateCount;
-int fixedUpdateCount;
-const ULONGLONG noteSpeed = 50;
-const ULONGLONG BPM = 100;
+
+const ULONGLONG runningSpeed = 10;		// 0.01 초
+const ULONGLONG BPM = 120;				// 대충 120 bpm 기준이면?
+const double noteSpeed = 0.001;
+
 
 /// <summary>
 /// 시간 초기화
 /// </summary>
 void InitTime()
 {
-	// 델타타임 = 0 (누적시간 0)
+	// 델타타임 초기화 = 0 (누적시간 0)
 	currentTime = previousTime = GetTickCount64();
 	// 1ms 단위로 반환
 }
-
 
 void UpdateTime()
 {
@@ -546,15 +629,14 @@ void UpdateTime()
 	deltaTime = currentTime - previousTime;
 }
 
-ULONGLONG GetDeltaTime()
-{
-	return deltaTime;								// 단위 : 1/1000 초
-}
+//
+//ULONGLONG GetDeltaTime()
+//{
+//	return deltaTime;								// 단위 : 1/1000 초
+//}
 
 
-int l_note[] = { 1,0,1,0,1,1 };
-COORD NotecurPos_l[] = { {8,30},{8,30},{8,30},{8,30},{8,30},{8,30} };
-COORD NoteprePos_l[] = { {8,30},{8,30},{8,30},{8,30},{8,30},{8,30} };
+
 
 ///
 /// y 축 한줄 씩 -1 시키기
@@ -562,86 +644,105 @@ COORD NoteprePos_l[] = { {8,30},{8,30},{8,30},{8,30},{8,30},{8,30} };
 /// L(8) D(24) U(40) R(56)
 void UpdateNotePosition(int i)
 {
+	static ULONGLONG elapsedTime;
+	elapsedTime += deltaTime;
+
+	ULONGLONG barTime = 60000 / BPM * 4;
+	ULONGLONG noteInterval = barTime / 8;
+
+	ULONGLONG noteTime = noteInterval * i;
+
+
 	if (l_note[i] == 1)
 	{
-		NoteprePos_l[i] = NotecurPos_l[i];
-		DrawLeftArrow(NoteprePos_l[i], color_black);
-		NotecurPos_l[i].Y--;
+		//NoteprePos_l[i] = NotecurPos_l[i];
+		//ScreenDrawLeftArrow(NoteprePos_l[i], color_black);
+		/*if (elapsedTime >= 50)
+		{
+			
+			elapsedTime -= 50;
+		}*/
+
+		NotecurPos_l[i].Y --;
 
 		// 만약 화살표가 화면을 벗어나면 그만 출력시킨다
 		// 판정 기능 구현 후
 		// 판정 안에 타격하면 UImaxSize 에서 리턴, 미스는 콘솔사이즈에서 리턴
-		if (NotecurPos_l[i].Y < consoleScreenSize.Top)
+		if (NotecurPos_l[i].Y <= consoleScreenSize.Top)
 		{
 			return;
 		}
-		DrawLeftArrow(NotecurPos_l[i], color_gray);
+		ScreenDrawLeftArrow(NotecurPos_l[i], color_gray);
 	}
 
 	if (l_note[i] == 0)
 		return;
 }
 
-void UpdateBPM()
+
+void GenerateNote()
 {
 	static ULONGLONG elapsedTime;
 	elapsedTime += deltaTime;
 
-	for (int i = 0; i < MAX_NOTE; i++)
+	ULONGLONG barTime = 60000 / BPM * 4;
+	ULONGLONG noteInterval = barTime / 8;
 
+
+	int noteCount = sizeof(l_note) / sizeof(int);
+
+	for (int i = 0; i < noteCount; i++)
 	{
-		if (elapsedTime >= BPM * i)
+		if (elapsedTime >= noteInterval * i)
 		{
+			//NotecurPos_l[i].Y--;
 			UpdateNotePosition(i);
-
 		}
 	}
 
 }
 
-void UpdateNote()
+
+//void UpdateNote()
+//{
+//	static ULONGLONG elapsedTime;
+//	elapsedTime += deltaTime;
+//
+//	if (elapsedTime >= runningSpeed)
+//	{
+//		UpdateBPM();
+//		elapsedTime -= runningSpeed;
+//	}
+//
+//}
+
+
+
+
+/// 렌더 (직접적인 출력 부분) 뒷 버퍼 기준
+void UpdateRender()
 {
 	static ULONGLONG elapsedTime;
 	elapsedTime += deltaTime;
 
-	if (elapsedTime >= noteSpeed)
+	if (elapsedTime >= runningSpeed)
 	{
-		UpdateBPM();
-		elapsedTime -= noteSpeed;
+		// 이전 출력 내용을 지운다
+		ScreenClear();
+
+		// 새로 출력할 내용을 작성한다
+		ScreenDrawKeyInterface();
+		//UpdateNote();
+		GenerateNote();
+
+
+		// 앞 뒤 버퍼를 뒤집는다
+		ScreenFlipping();
+
+		elapsedTime -= runningSpeed;
 	}
-
-
+	
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 int main()
@@ -649,17 +750,17 @@ int main()
 	initConsole();
 	InitTime();
 	system("cls");
-
+	
 
 	while (1)
 	{
 		UpdateTime();
 		UpdateInput();
-		DrawKeyInterface();
-		UpdateNote();
-		ScreenClear();
+		
 
+		UpdateRender();
 
-		//system("cls");
+		
+
 	}
 }

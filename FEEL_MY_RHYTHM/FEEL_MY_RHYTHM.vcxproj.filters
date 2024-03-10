@@ -27,9 +27,6 @@
     <ClCompile Include="fmod.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="..\test\paaaaarce.c">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="input.h">

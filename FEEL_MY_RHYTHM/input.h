@@ -23,3 +23,4 @@ void SetKeyTable(const int keyIndex, bool isOn);
 bool GetKeyTable(const int keyIndex);
 
 void UpdateInput();
+void UpdateMenuInput();

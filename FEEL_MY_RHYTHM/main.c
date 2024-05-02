@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#define MAX_NOTE 6
+//#define MAX_NOTE 6
 #define ROW_SIZE 160
 #define COLUMN_SIZE 50
 #define MAX_LINES 5000
@@ -53,11 +53,6 @@ char buffer2[1024];
 char buffer3[1024];
 
 char* token;
-
-
-
-
-
 
 
 
@@ -140,6 +135,25 @@ void initConsole()
 	SetConsoleCursorInfo(hScreen[1], &consoleCursor);
 
 
+	// 창 크기 고정
+	HWND hWnd = GetConsoleWindow();
+	LONG style = GetWindowLong(hWnd, GWL_STYLE);
+	style &= ~(WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX);
+	SetWindowLong(hWnd, GWL_STYLE, style);
+
+	// 콘솔 창 크기 설정
+	SMALL_RECT screenRect = { 0,0,ROW_SIZE - 1,COLUMN_SIZE - 1};
+	SetConsoleWindowInfo(consonleHandle, TRUE, &screenRect);
+	SetConsoleWindowInfo(hScreen[0], TRUE, &screenRect);
+	SetConsoleWindowInfo(hScreen[1], TRUE, &screenRect);
+
+	// 화면 버퍼 크기 설정
+	COORD bufferSize = { ROW_SIZE,COLUMN_SIZE };
+	SetConsoleScreenBufferSize(consonleHandle, bufferSize);
+	SetConsoleScreenBufferSize(hScreen[0], bufferSize);
+	SetConsoleScreenBufferSize(hScreen[1], bufferSize);
+
+
 	// 화면 사이즈 받아오기 (버퍼값 받아서 ScreenSize 에 대입)
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
@@ -206,68 +220,14 @@ void ScreenClear()
 	FillConsoleOutputAttribute(GetScreenHandle(), wColors, dwConSize, coordScreen, &dwWrittenCount);
 }
 
-void ScreenClear1(int text_color, int back_color)
-{
-	COORD coordScreen = { 0, 0 };
-	DWORD dwConSize;
 
-
-	// 콘솔 창을 공백으로 채우기
-	FillConsoleOutputCharacterW(GetScreenHandle(), L' ', dwConSize, coordScreen, &dwConSize);
-
-	// 색상 속성을 지정하여 콘솔 창을 지우기
-	WORD wColors = ((WORD)back_color << 4) | (WORD)text_color; // 흰색 글자색, 검정 배경색
-	FillConsoleOutputAttribute(GetScreenHandle(), wColors, dwConSize, coordScreen, &dwConSize);
-}
-
-//void ScreenClear()
-//{
-//	COORD coor = { 0,0 };
-//	DWORD dw;
-//
-//	FillConsoleOutputCharacterW(GetScreenHandle(), L' ', dw, coor, &dw);
-//	WORD wColors = ((WORD)0 << 4) | (WORD)15; // 흰색 글자색, 검정 배경색
-//	FillConsoleOutputAttribute(GetScreenHandle(), wColors, dw, coor, &dw);
-//		//문자 수가 화면 버퍼에서 지정된 행의 끝 이상으로 확장되면 다음행에 기록된다(자동으로 다음행으로 넘어가는듯)
-//		//버퍼보다 문자 수가 큰 경우는 버퍼의 끝 까지만 기록된다
-//		//작성된 위치의 특성 값은 변경되지 않는다(? ? ) 색 변경이 안되는건가
-//	FillConsoleOutputCharacter(GetScreenHandle(), 'a', 180 * 60, coor, &dw);
-//
-//
-//	FillConsoleOutputCharacter(GetScreenHandle(), ' ', 180 * 60, coor, &dw);
-//
-//	 ////[가로줄에 전부 공백 채우기] 를 세로줄 개수만큼 돌림
-//		//for (int i = 0; i < COLUMN_SIZE; i++)
-//		//{
-//		//	coor.Y = i;
-//		//	//공백을 화면크기만큼 입력해줘야함;;
-//		//	for (int j = 0; j < ROW_SIZE; j++)
-//		//	{
-//		//		setColor(color_yellow, color_blue);
-//		//		ScreenPrint(j, i, ' ', 1);
-//		//	}
-//
-//		//	FillConsoleOutputCharacter(GetScreenHandle(), 'a', _UImaxSize.Right - _UImaxSize.Left + 5, coor, &dw);
-//		//}
-//
-//}
-
-
-/// 버퍼에 그림그리기 (공백 두 칸 찍기) 
+/// 버퍼에 그림그리기 (공백 두 칸 찍기) 노트(화살표) 출력용 정사각형
 void ScreenPrint(int x, int y, const char* str, int length)
 {
 	DWORD dw;	// unsigned long 구조체
 	COORD CursorPosition = { x, y };
-	
-
 
 	SetConsoleCursorPosition(GetScreenHandle(), CursorPosition);
-	// 2 는 문자열 길이
-
-	
-
-
-
 	WriteFile(GetScreenHandle(), &str, length, &dw, NULL);
 }
 
@@ -289,17 +249,8 @@ void ScreenDraw(int x, int y, const char* str)
 		strLen++;
 	}
 
-	
-
 	WriteFile(GetScreenHandle(), str, strLen, &dw, NULL);
 }
-
-
-
-
-
-
-
 
 /// 버퍼 닫기
 void ScreenRelease()
@@ -307,12 +258,6 @@ void ScreenRelease()
 	CloseHandle(hScreen[0]);
 	CloseHandle(hScreen[1]);
 }
-
-
-
-
-
-
 
 /// <summary>
 /// 커서 위치 이동하는 함수
@@ -327,74 +272,12 @@ void gotoXY(int x, int y)
 }
 
 
-
-
-
-///
-/// 노트 카운트, 노트 초기위치 초기화
-/// 
-
-COORD NotecurPos_l[43];
-COORD NotecurPos_d[43];
-COORD NotecurPos_u[43];
-COORD NotecurPos_r[43];
-COORD NotePos[4][43];
-
-
-
-void SetNotePosition(int y)
-{
-	noteCount = sizeof(l_note) / sizeof(int);
-	for (int i = 0; i < noteCount; i++)
-	{
-		// test
-		noteCheck[LEFT][i] = true;
-		noteCheck[RIGHT][i] = true;
-		noteCheck[UP][i] = true;
-		noteCheck[DOWN][i] = true;
-
-		NotecurPos_l[i].X = 8;
-		NotecurPos_d[i].X = 24;
-		NotecurPos_u[i].X = 40;
-		NotecurPos_r[i].X = 56;
-
-		NotecurPos_l[i].Y = y;
-		NotecurPos_d[i].Y = y;
-		NotecurPos_u[i].Y = y;
-		NotecurPos_r[i].Y = y;
-
-		NotePos[LEFT][i].X = 8;
-		NotePos[RIGHT][i].X = 56;
-		NotePos[UP][i].X = 40;
-		NotePos[DOWN][i].X = 24;
-
-		NotePos[LEFT][i].Y = y;
-		NotePos[RIGHT][i].Y = y;
-		NotePos[UP][i].Y = y;
-		NotePos[DOWN][i].Y = y;
-	}
-}
-
-
-
-
-
-
-
-
-
 ///
 /// 04. 10
 /// 인풋 값을 받으면
 /// 색칠이 되는 UI
 /// 거의 전체화면
 /// 
-
-
-
-
-
-
 
 // 배경 색, 글꼴 색 지정
 void setColor(int backColor, int textColor)
@@ -403,8 +286,6 @@ void setColor(int backColor, int textColor)
 	//SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (backColor << 4) + textColor);
 	SetConsoleTextAttribute(GetScreenHandle(), (backColor << 4) + textColor);
 }
-
-
 
 
 /// <summary>
@@ -429,8 +310,6 @@ const int arr[5][5] =
 /// <param name="color">무슨 색으로 출력할깡?</param>
 void DrawUpArrow(COORD pos, int color)
 {
-
-	// arr[i][j] up
 	for (int i = 0; i < 5; i++)
 	{
 		for (int j = 0; j < 5; j++)
@@ -671,114 +550,6 @@ void ScreenDrawKeyInterface()
 	ScreenDrawRightArrow(posRight, colorRight);
 	ScreenDrawDownArrow(posDown, colorDown);
 	ScreenDrawLeftArrow(posLeft, colorLeft);
-
-	/// 다른 함수로 정리함
-	{
-		// 이차원 배열을 설정하고 화살표 모양을 만듦
-	//int arr[5][5] =
-	//{
-	//	{0,0,1,0,0},
-	//	{0,1,1,1,0},
-	//	{1,0,1,0,1},
-	//	{0,0,1,0,0},
-	//	{0,0,1,0,0}
-	//};
-
-	// arr[i][j] up
-	//for (int i = 0; i < 5; i++)
-	//{
-	//	for (int j = 0; j < 5; j++)
-	//	{
-	//		// j는 가로 출력 (x), i는 세로 출력을 담당 (y)
-	//		// 가로는 세로보다 두배 출력해야함.. -> j*2
-	//		gotoXY(x + 2 * j, y + i);
-	//		//if (arr[i][j] == 0)
-	//		//{
-	//		//	setColor(color_black);
-	//		//	//printf("  ");
-	//		//}	 없어도 무관
-	//		if (arr[i][j] == 1)
-	//		{
-	//			setColor(color);
-	//			printf("  ");
-	//		}
-	//	}
-	//}
-
-	// arr[i][j] left
-	// y=x 대칭 (윈도우의 y축은 아래쪽 증가)
-	//for (int i = 0; i < 5; i++)
-	//{
-	//	for (int j = 0; j < 5; j++)
-	//	{
-	//		gotoXY(x +  2*i, y + j);
-	//		
-	//		if (arr[i][j] == 1)
-	//		{
-	//			setColor(color);
-	//			printf("  ");
-	//		}
-	//	}
-	//}
-
-
-	// arr[i][j] right
-	// left의 x= 5 대칭 (가로줄은 두칸단위임!!!!!) -> 그래서 (5-1)가 아니라 (10-2)
-	//for (int i = 0; i < 5; i++)
-	//{
-	//	for (int j = 0; j < 5; j++)
-	//	{
-	//		gotoXY(x + 8 - 2 * i, y + j);
-	//		
-	//		if (arr[i][j] == 1)
-	//		{
-	//			setColor(color);
-	//			printf("  ");
-	//		}
-	//	}
-	//}
-	//
-
-	// arr[i][j] 
-	// 배열은 항상 0번째부터 출력됨을 명심하자!! (5 - 1) = 4
-	//for (int i = 0; i < 5; i++)
-	//{
-	//	for (int j = 0; j < 5; j++)
-	//	{
-	//		gotoXY(x + 2 * j, y + 4 - i);
-	//		
-	//		if (arr[i][j] == 1)
-	//		{
-	//			setColor(color);
-	//			printf("  ");
-	//		}
-	//	}
-	//}
-
-
-	/*setColor(color_black);
-	printf("    ");
-	setColor(color, 15);
-	printf("  \n");
-
-	setColor(color_black);
-	printf("  ");
-	setColor(color, 15);
-	printf("  ");
-	setColor(color_black);
-	printf("  ");
-	setColor(color, 15);
-	printf("  \n");
-
-	setColor(color, 15);
-	printf("  ");
-	setColor(color_black);
-	printf("      ");
-	setColor(color, 15);
-	printf("  ");
-
-	setColor(color_black);*/
-	}
 }
 
 
@@ -836,221 +607,6 @@ void UpdateTime()
 	//g_countU++;
 }
 
-//
-//ULONGLONG GetDeltaTime()
-//{
-//	return deltaTime;								// 단위 : 1/1000 초
-//}
-
-
-// 이미 리턴된 배열에 관하여 재출력을 방지하고 싶다
-bool noteCheck[4][43];
-
-
-///
-/// 올라오는 노트 생성 및 출력 관련 함수
-/// y 축 한줄 씩 -1 시키기
-/// _UIMaxSize.Bottom -1
-/// L(8) D(24) U(40) R(56)
-void UpdateNotePosition_left(int i)
-{
-	if (l_note[i] == 1)
-	{
-		
-		NotecurPos_l[i].Y --;
-		//HitBox(NotecurPos_l[i].Y, i, LEFT);
-
-
-
-		// 만약 화살표가 화면을 벗어나면 그만 출력시킨다
-		// 판정 기능 구현 후
-		// 판정 안에 타격하면 UImaxSize 에서 리턴, 미스는 콘솔사이즈에서 리턴
-		if ( HitBox(NotecurPos_l[i].Y, i, LEFT) || NotecurPos_l[i].Y <= consoleScreenSize.Top)
-		{
-			noteCheck[LEFT][i] = false;
-			return;
-		}
-		ScreenDrawLeftArrow(NotecurPos_l[i], color_blue);
-	}
-
-	if (l_note[i] == 0)
-	{
-		/*if (GetKeyTable(LEFT))
-		{
-			SetKeyTable(LEFT, false);
-		}*/
-		return;
-	}
-	// 마지막 인덱스에 2를 넣어서 키 입력을 막아버린다
-	else 
-	{
-		SetKeyTable(LEFT, false);
-	}
-	
-		
-}
-
-void UpdateNotePosition_down(int i)
-{
-	if (d_note[i] == 1)
-	{
-		NotecurPos_d[i].Y--;
-		
-		if ( HitBox(NotecurPos_d[i].Y, i, DOWN) || NotecurPos_d[i].Y <= consoleScreenSize.Top)
-		{
-			noteCheck[DOWN][i] = false;
-			return;
-		}
-		ScreenDrawDownArrow(NotecurPos_d[i], color_green);
-	}
-
-	if (d_note[i] == 0)
-		return;
-
-	else
-	{
-		SetKeyTable(DOWN, false);
-	}
-
-}
-
-void UpdateNotePosition_up(int i)
-{
-	if (u_note[i] == 1)
-	{
-		NotecurPos_u[i].Y--;
-
-
-		if ( HitBox(NotecurPos_u[i].Y, i, UP) || NotecurPos_u[i].Y <= consoleScreenSize.Top)
-		{
-			noteCheck[UP][i] = false;
-			return;
-		}
-		ScreenDrawUpArrow(NotecurPos_u[i], color_red);
-	}
-
-	if (u_note[i] == 0)
-		return;
-
-
-	else
-	{
-		SetKeyTable(UP, false);
-	}
-
-}
-
-
-void UpdateNotePosition_right(int i)
-{
-	if (r_note[i] == 1)
-	{
-		NotecurPos_r[i].Y--;
-
-		
-		if ( HitBox(NotecurPos_r[i].Y, i, RIGHT) || NotecurPos_r[i].Y <= consoleScreenSize.Top)
-		{
-			noteCheck[RIGHT][i] = false;
-			return;
-		}
-		ScreenDrawRightArrow(NotecurPos_r[i], color_dark_yellow);
-	}
-
-	if (r_note[i] == 0)
-		return;
-
-
-	else
-	{
-		SetKeyTable(RIGHT, false);
-	}
-
-
-}
-
-void UpdateNotePosition(int keyNum, int i)
-{
-	if (note[keyNum][i] == 1)
-	{
-		NotePos[keyNum][i].Y--;
-
-
-		if (HitBox(NotePos[keyNum][i].Y, i, keyNum) || NotePos[keyNum][i].Y <= consoleScreenSize.Top)
-		{
-			noteCheck[keyNum][i] = false;
-			return;
-		}
-		ScreenDrawArrow(keyNum, NotePos[keyNum][i]);
-	}
-
-	if (note[keyNum][i] == 0)
-		return;
-
-	else
-	{
-		SetKeyTable(keyNum, false);
-	}
-
-}
-
-
-
-
-/// <summary>
-///  노트 생성 부분
-/// </summary>
-
-
-// 80 개 
-void GenerateNote()
-{
-	g_elapsedTime_Note += deltaTime;
-
-	/// 대체 무슨 일이 있었던 것인가?
-	// 카운팅용 스태틱
-	static int _count_Note = 0;
-
-	//g_ms_ForDebug2[_count_Note] = g_elapsedTime_Note;
-	//g_ms_ForDebug2d[_count_Note] = deltaTime;
-	//_count_Note++;
-	
-	ULONGLONG barTime = 60000 / BPM * 4;			// bpm = 120
-	ULONGLONG noteInterval = barTime / 16;			// interval = 125
-
-	int note_Index;
-
-	// 지나간 노트에 대해서는 검사를 멈추고 싶음 -> noteCheck
-	for (note_Index = 0; note_Index < noteCount; note_Index++)
-	{
-		if ((g_elapsedTime_Note >= (double)noteInterval * note_Index / 10.f))
-		{
-			// 노트 포지션 함수 병합 & 노트 배열 이차원 배열로 바꾸기
-			/*UpdateNotePosition_left(note_Index);
-			UpdateNotePosition_down(note_Index);
-			UpdateNotePosition_up(note_Index);
-			UpdateNotePosition_right(note_Index);*/
-
-			if (noteCheck[LEFT][note_Index] == true)
-			{
-				UpdateNotePosition(LEFT, note_Index);
-			}
-			if (noteCheck[RIGHT][note_Index] == true)
-			{
-				UpdateNotePosition(RIGHT, note_Index);
-			}
-			if (noteCheck[UP][note_Index] == true)
-			{
-				UpdateNotePosition(UP, note_Index);
-			}
-			if (noteCheck[DOWN][note_Index] == true)
-			{
-				UpdateNotePosition(DOWN, note_Index);
-			}
-		}
-		
-	}
-}
-
 
 // 아스키 아트 원래 3
 char** asciiArt[5];
@@ -1074,28 +630,17 @@ void UpdateRender_Song2()
 	
 	if (g_elapsedTimeB >= runningSpeed)
 	{
-		/// 대체 무슨 일이 있었던 것인가?
-		//g_ms_ForDebugB[_countB] = g_elapsedTimeB;
-		//g_ms_ForDebugBd[_countB] = deltaTime;
-
-		//_countB++;
-
-		// 이전 출력 내용을 지운다
 		ScreenClear();
 
 		// 새로 출력할 내용을 작성한다
 		ScreenDrawKeyInterface();
 		GameLogic(1, 61000, num_hitobjects2);
 
-		//GenerateNote();
-		//UpdateNote();
 		FindAsciiArt(asciiArtFilePath1, 10, 0);
 		FindAsciiArt(asciiArtFilePath2, 7, 2);
 		PrintAsciiArt(asciiArt[2], i, anim1_frame, 120, 15, color_dark_white);
 		PrintAsciiArt(asciiArt[0], j, anim2_frame, 90, 13, color_dark_white);
 		PrintCombo(100, 4, color_yellow);
-		//CopyPrintAsciiArt(1, i, anim1_frame, 120, 15, color_dark_white);
-		//CopyPrintAsciiArt(0, j, anim2_frame, 90, 13, color_dark_white);
 
 		// 앞 뒤 버퍼를 뒤집는다
 		ScreenFlipping();
@@ -1132,12 +677,6 @@ void UpdateRender_Song1()
 
 	if (g_elapsedTimeA >= runningSpeed)
 	{
-		/// 대체 무슨 일이 있었던 것인가?
-		//g_ms_ForDebugA[_countA] = g_elapsedTimeA;
-		//g_ms_ForDebugAd[_countA] = deltaTime;
-
-		//_countA++;
-
 		// 이전 출력 내용을 지운다
 		ScreenClear();
 
@@ -1179,12 +718,6 @@ void UpdateRender_Song3()
 
 	if (g_elapsedTimeA >= runningSpeed)
 	{
-		/// 대체 무슨 일이 있었던 것인가?
-		//g_ms_ForDebugA[_countA] = g_elapsedTimeA;
-		//g_ms_ForDebugAd[_countA] = deltaTime;
-
-		//_countA++;
-
 		// 이전 출력 내용을 지운다
 		ScreenClear();
 
@@ -1240,7 +773,6 @@ void FindAsciiArt(const char* asciiArtFilePath, int fileNum, int asciiNum)
 		asciiArt[asciiNum][i][readSize] = '\0'; // 마지막에 널 문자 추가 > 이거 걍 파일 하나 당의 아스키 아트 문자 개수
 		fclose(fp);
 	}
-
 }
 
 size_t starlen(const char* str)
@@ -1249,152 +781,6 @@ size_t starlen(const char* str)
 	for (s = str; *s; ++s);
 	return(s - str);
 }
-
-
-// 파일 경로, 해당 애니메이션을 출력하는데에 필요한 파일의 개수, 몇번째 아스키 아트인지
-//void CopyFindAsciiArt(const char* asciiArtFilePath, int fileNum, int asciiNum)
-//{
-//	FILE* fp;
-//	char buffer[256];
-//	//int line = 0;
-//	//int index = 0;
-//	char** asciiArt;
-//	asciiArt= (char**)malloc(sizeof(char*) * fileNum);
-//	copyAnim[asciiNum] = (char**)malloc(sizeof(char*) * fileNum);
-//
-//
-//	// n 개의 아스키 아트 파일 읽기
-//	for (int i = 0; i < fileNum; i++)
-//	{
-//		asciiArt[i] = (char*)malloc(sizeof(char) * 3000);
-//		copyAnim[asciiNum][i] = (char*)malloc(sizeof(char) * 3000);
-//		
-//
-//		snprintf(buffer, 256, "%s%d.txt", asciiArtFilePath, i);
-//		// fopen 함수는 파일 읽기를 성공하면 0을 반환한다. 때문에 0 이 아니면 파일을 읽지 못한 경우임
-//		errno_t err = fopen_s(&fp, buffer, "r");
-//		if (err != 0) {
-//			//printf("아스키 아트 파일을 찾을 수 없습니다.");
-//			exit(1);
-//		}
-//		
-//
-//		
-//	}
-//
-//	// 동적할당 해제
-//	for (int i = 0; i < fileNum; i++)
-//	{
-//		free(asciiArt[i]);
-//	}
-//	free(asciiArt);
-//
-//}
-
-
-
-
-
-
-/// 파일 경로, 해당 애니메이션을 출력하는데에 필요한 파일의 개수, 몇번째 아스키 아트인지
-//void CopyFindAsciiArt1(const char* asciiArtFilePath, int fileNum, int asciiNum, int posx, int posy)
-//{
-//	FILE* fp;
-//	char buffer[256];
-//	//int line = 0;
-//	//int index = 0;
-//	char** asciiArt;
-//	asciiArt = (char**)malloc(sizeof(char*) * fileNum);
-//	copyAnim[asciiNum] = (char**)malloc(sizeof(char*) * fileNum);
-//
-//
-//	char line[3000];
-//	int readSize = 0;
-//
-//	// n 개의 아스키 아트 파일 읽기
-//	for (int i = 0; i < fileNum; i++)
-//	{
-//		int index = 0;
-//		asciiArt[i] = (char*)malloc(sizeof(char) * 3000);
-//		copyAnim[asciiNum][i] = (char*)malloc(sizeof(char) * 3000);
-//
-//
-//		snprintf(buffer, 256, "%s%d.txt", asciiArtFilePath, i);
-//		// fopen 함수는 파일 읽기를 성공하면 0을 반환한다. 때문에 0 이 아니면 파일을 읽지 못한 경우임
-//		errno_t err = fopen_s(&fp, buffer, "r");
-//		if (err != 0) {
-//			//printf("아스키 아트 파일을 찾을 수 없습니다.");
-//			exit(1);
-//		}
-//
-//
-//		if (fp != NULL)
-//		{
-//			while (fgets(line, sizeof(line), fp) != NULL)
-//			{
-//				strcat_s(asciiArt[i], 3000, line);
-//			}
-//
-//		}
-//
-//		//int readSize = fread(asciiArt[i], sizeof(char), 3000, fp);
-//		//// 마지막에 널 문자 추가 > 이거 걍 파일 하나 당의 아스키 아트 문자 개수
-//		//asciiArt[i][readSize] = '\0'; 
-//		//int length = starlen(asciiArt[i]);
-//		//fclose(fp);
-//
-//		//memcpy(copyAnim[asciiNum][i], asciiArt[i], sizeof(char) * (length + 1));
-//		
-//		
-//		
-//
-//
-//		// 마지막에 널 문자 추가 > 이거 걍 파일 하나 당의 아스키 아트 문자 개수
-//		asciiArt[i][starlen(asciiArt[i])] = '\0';
-//		int length = starlen(asciiArt[i]);
-//
-//		memcpy(copyAnim[asciiNum][i], asciiArt[i], sizeof(char) * (length + 1));
-//		fclose(fp);
-//
-//	}
-//
-//	// 동적할당 해제
-//	for (int i = 0; i < fileNum; i++)
-//	{
-//		free(asciiArt[i]);
-//	}
-//	free(asciiArt);
-//
-//	/*int x = posx;
-//	int y = posy;*/   // 현재 출력 위치 저장
-//
-//
-//	// i = 0 부터 i = 3 은 파일의 인덱스를 의미
-//	//for (int i = 0; i < fileNum; i++)
-//	//{
-//	//	int line = 0;
-//	//	int index = 0;
-//
-//
-//	//	// while 문은 readSize 로 읽어온 아스키 문자수의 마지막에 추가한 널문자를 만나기 전까지 돌린다
-//	//	while (copyAnim[asciiNum][index] != '\0')
-//	//	{
-//	//		setColor(color_black, color_white);
-//	//		ScreenPrint(x, y, (char)copyAnim[asciiNum][index++], 1);
-//	//		x++;
-//	//		if (copyAnim[asciiNum][index] == '\n')
-//	//		{
-//	//			x = posx;
-//	//			index++;
-//	//			y++;   // 다음 줄로 이동할 때마다 증가
-//	//			ScreenPrint(x, y, NULL, 0);
-//
-//	//		}
-//	//	}
-//	//}
-//
-//
-//}
 
 
 // 버퍼에 저장된 아스키 아트를 출력한다 , 아스키 아트의 종류, 파일 개수 세는 변수, 파일 개수, x,y 좌표
@@ -1437,62 +823,6 @@ void PrintAsciiArt(char** asciiArt, int i, int n, int posx, int posy, int textco
 	free(asciiArt);
 
 }
-
-
-// 버퍼에 저장된 아스키 아트를 출력한다 , 아스키 아트의 종류, 파일 개수 세는 변수, 파일 개수, x,y 좌표
-//void CopyPrintAsciiArt( int i, int n, int posx, int posy, int textcolor)
-//{
-//
-//	int x = posx;
-//	int y = posy;   // 현재 출력 위치 저장
-//
-//
-//	// i = 0 부터 i = 3 은 파일의 인덱스를 의미
-//	//for (int i = 0; i < 1; i++)
-//	{
-//		int line = 0;
-//		static int index = 0;
-//		int c = 0;
-//
-//		// while 문은 readSize 로 읽어온 아스키 문자수의 마지막에 추가한 널문자를 만나기 전까지 돌린다
-//		//while (copyAnim[i][index][c] != '\0')
-//		while (true)
-//		{
-//			if (c == 1) break;
-//			setColor(color_black, textcolor);
-//			ScreenPrint(x, y, copyAnim[i][index][c], 1);
-//			x++;
-//			if (copyAnim[i][index][c] == '\n')
-//			{
-//				x = posx;
-//				c++;
-//				y++;   // 다음 줄로 이동할 때마다 증가
-//				ScreenPrint(x, y, NULL, 0);
-//
-//			}
-//		}
-//
-//		index = (index + 1) % n;
-//	}
-//
-//
-//}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 char* copy_temp[4];
 
@@ -1544,25 +874,6 @@ void Copy(const char* str, int index)
 // 타이틀 아스키를 출력하는 함수입니다.
 void DrawTitle(int posx, int posy)
 {
-	//char* print_temp;
-	//FILE* rfp;
-	//errno_t err = fopen_s(&rfp, "FMR_title.txt", "rt");
-	//print_temp = (char*)malloc(sizeof(char) * 3000);
-
-	//
-	//if (err != 0)
-	//{
-	//	//printf("파일 불러오기에 실패했습니다.\n");
-	//	exit(1);
-	//}
-	//// 마지막 문자에 널문자 추가
-	//int readSize = fread(print_temp, sizeof(char), 3000, rfp);
-	//print_temp[readSize] = '\0';
-	//fclose(rfp);
-
-	
-
-
 	int x = posx;
 	int y = posy;
 	static int color = color_blue;
@@ -1598,27 +909,6 @@ void DrawTitle(int posx, int posy)
 			//ScreenPrint(x, y, NULL, 0);
 		}
 	}
-	
-	//color = (color + 1) % 12 + 1;
-	//while (copy_temp[0][index] != '\0')
-	//{
-	//	color = (color + 1) % 12 + 1;
-	//	setColor(color_black, color);
-	//	
-	//	ScreenPrint(x, y, copy_temp[0][index++], 1);
-	//	x++;
-	//	if (copy_temp[0][index] == '\n')
-	//	{
-	//		x = posx;
-	//		//index++;
-	//		y++;   // 다음 줄로 이동할 때마다 증가
-	//		//setColor(color_black, color);
-	//		//ScreenPrint(x, y, NULL, 0);
-	//	}
-	//}
-
-	//free(print_temp);
-	
 }
 
 
@@ -1638,8 +928,8 @@ void DrawSubtitle(int posx, int posy, int printcolor, int backcolor)
 	int y2 = posy + 2;
 
 
-	static ULONGLONG elapsedTime;
-	elapsedTime += deltaTime;
+	static ULONGLONG elapsedTime_sub;
+	elapsedTime_sub += deltaTime;
 
 
 	char print_temp[5000];
@@ -1662,23 +952,6 @@ void DrawSubtitle(int posx, int posy, int printcolor, int backcolor)
 	int readSize = fread(print_temp, sizeof(char), 5000, rfp);
 	print_temp[readSize] = '\0';
 	fclose(rfp);
-
-
-
-	// 회색 바탕 출력 코드
-	//for (int j = 0; j <11; j++)
-	//{
-	//	// 일단 화면 크기 확정된거 아니니까 화면 버퍼사이즈에 맞게 출력되도록 설정해놓음
-	//	for (int i = 0; i < consoleScreenSize.Right - consoleScreenSize.Left + 1; i++)
-	//	{
-	//		setColor(backcolor, color_white);
-	//		ScreenPrint(x, y, ' ', 1);
-	//		x++;
-	//	}
-	//	y++;
-	//}
-
-
 
 	// 글자를 깜박거리게 하고싶다
 
@@ -1724,20 +997,15 @@ void DrawSubtitle(int posx, int posy, int printcolor, int backcolor)
 
 	}
 	// 대충 1 초 간격으로 안보임 ㅎㅎ
-	if (elapsedTime >= 1000)
+	if (elapsedTime_sub >= 1000)
 	{
 		setPrint = false;
-
-		//elapsedTime -= 1000;
-		elapsedTime = 0;
+		elapsedTime_sub = 0;
 	}
 	else
 	{
 		setPrint = true;
 	}
-
-	//free(print_temp);
-
 }
 
 
@@ -1752,27 +1020,20 @@ void TitleRender(bool isPlaying)
 	}
 
 
-	static ULONGLONG elapsedTime;
-	elapsedTime += deltaTime;
+	static ULONGLONG elapsedTime_Title;
+	elapsedTime_Title += deltaTime;
 
-	if (elapsedTime >= runningSpeed)
+	if (elapsedTime_Title >= runningSpeed)
 	{
 		ScreenClear();
-
-
-
 
 		DrawTitle(20, 3);
 		DrawSubtitle(0, 35, color_dark_yellow, color_black);
 
-
 		ScreenFlipping();
 
-		elapsedTime -= runningSpeed;
+		elapsedTime_Title = 0;
 	}
-
-	
-
 }
 
 
@@ -1902,13 +1163,13 @@ void DrawMenuList(int menunumber)
 void DrawMenu()
 {
 
-	static ULONGLONG elapsedTime;
-	elapsedTime += deltaTime;
+	static ULONGLONG elapsedTime_menu;
+	elapsedTime_menu += deltaTime;
 	
 	int menunumber = GetSelectedMenu();
 
 
-	if (elapsedTime >= runningSpeed)
+	if (elapsedTime_menu >= runningSpeed)
 	{
 
 		ScreenClear();
@@ -1923,10 +1184,8 @@ void DrawMenu()
 		ScreenFlipping();
 
 
-		elapsedTime -= runningSpeed;
+		elapsedTime_menu -= runningSpeed;
 	}
-
-
 }
 
 
@@ -2007,9 +1266,6 @@ void PlayAnim1(int menunumber, int posx, int posy)
 
 void PlayAnim3(int menunumber, int posx, int posy)
 {
-	//int x = posx;
-	//int y = posy;
-	//const char* str = "                                 ";
 	int anim_frame = 8;
 
 	static int i = 0;
@@ -2018,34 +1274,13 @@ void PlayAnim3(int menunumber, int posx, int posy)
 
 	if (menunumber == 3)
 	{
-		/*setColor(color_dark_white, color_black);
-		ScreenDraw(x , y++, "                               ");
-		setColor(color_dark_white, color_black);
-		ScreenDraw(x , y++, "     개 발 팀 : 레 드 벨 벳    ");
-		setColor(color_dark_white, color_black);
-		ScreenDraw(x , y++, "                               ");
-		setColor(color_dark_white, color_black);
-		ScreenDraw(x, y++, "                               ");
-		setColor(color_dark_white, color_black);
-		ScreenDraw(x, y++, "          게  임  명           ");
-		setColor(color_dark_white, color_black);
-		ScreenDraw(x, y++, "                               ");
-		setColor(color_dark_white, color_black);
-		ScreenDraw(x , y++, " < F E E L  M Y  R H Y T H M > ");
-		setColor(color_dark_white, color_black);
-		ScreenDraw(x , y++, "                               ");
-		setColor(color_dark_white, color_black);
-		ScreenDraw(x, y++, "                               ");*/
-
 		PrintAsciiArt(asciiArt[4], i, anim_frame, posx, posy, color_yellow);
 		if (bPlaySound == true)
 		{
 			AudioPlay(delarue, &channel2);
 			bPlaySound = false;
 		}
-		//CopyPrintAsciiArt(2, anim_frame, posx, posy, color_yellow);
 		i++;
-
 	}
 	else
 	{
@@ -2056,8 +1291,6 @@ void PlayAnim3(int menunumber, int posx, int posy)
 	{
 		i = 0;
 	}
-
-
 }
 
 
@@ -2099,139 +1332,6 @@ bool isMiss[4][100];
 /// <param name="i">노트 배열의 index</param>
 /// <param name="key">상하좌우 중 무슨 키인지</param>
 /// <returns>isGood 에 대한 반환값</returns>
-bool HitBox(double y, int i, int key)
-{
-	//LEFT = 1;
-	//RIGHT = 2;
-	//UP = 3;
-	//DOWN = 4;
-
-	// 4 는 좌우상하 키 개수, 100 은 노트 개수
-	bool isGood[4][2000];
-	bool isMiss[4][500];
-
-	if (y > 2.f && y <= 7.f)
-	{
-		if (GetKeyTable(key)&&!isGood[key][i])
-		{
-			//SetKeyTable(key, false);
-			isGood[key][i] = true;
-			setColor(color_green, color_red);
-			ScreenPrint(100, 2, 'DOOG', 4);
-			combo++;
-		}
-		/*if (isGood)
-		{
-			SetKeyTable(LEFT, false);
-			setColor(color_green, color_red);
-			ScreenPrint(100, 2, 'GOOD', 4);
-		}*/
-
-		else
-		{
-			//SetKeyTable(key, false);
-		}
-	}
-
-	else if (y <= 2.f && !isGood[key][i] && !isMiss[key][i])
-	{
-		// 미스이펙트 넣고싶당...
-		//ScreenClear1(color_white, color_dark_purple);
-		//ScreenClear1(color_white, color_dark_purple);
-		{
-			missCount++;
-
-			setColor(color_red, color_green);
-			ScreenPrint(100, 3, 'SSiM', 4);
-			isMiss[key][i] = true;
-			isGood[key][i] = false;
-		}
-		
-	}
-	
-	// 콤보, 미스 개수 확인 출력용 코드
-	{
-		char convertMiss[20] = { 0 };
-		char convertCombo[20] = { 0 };
-
-		snprintf(convertCombo, sizeof(convertCombo), "%d", combo);
-		const char* constCombo = convertCombo;
-
-
-		snprintf(convertMiss, sizeof(convertMiss), "%d", missCount);
-		const char* constMiss = convertMiss;
-		setColor(color_yellow, color_blue);
-
-		ScreenPrint(90, 4, 'MOC', 6);
-		ScreenPrint(90, 6, 'SSIM', 4);
-		for (int i = 0; i < 5; i++)
-		{
-			ScreenPrint(100 + i, 4, convertCombo[i], 1);
-			ScreenPrint(100 + i, 6, convertMiss[i], 1);
-		}
-	}
-	
-	
-	// 판정 값 반환해서 노트 포지션 함수에서 노트 출력 지우는데에 쓰자
-	return isGood[key][i];
-}
-
-void HitBox2(int time, int i, int key)
-{
-	// 진행된 플레이타임을 저장하는 변수
-	unsigned _hitElapsedTime = GetAudioPlaybackTime(channel2);
-
-	// 4 는 좌우상하 키 개수, 100 은 노트 개수
-	bool isGood[4][2000];
-	bool isMiss[4][500];
-	if (time + 500 > _hitElapsedTime && time - 500 < _hitElapsedTime)
-	{
-		if (GetKeyTable(key) && !isGood[key][i])
-		{
-			//SetKeyTable(key, false);
-			isGood[key][i] = true;
-			setColor(color_green, color_red);
-			ScreenPrint(100, 2, 'DOOG', 4);
-			combo++;
-		}
-
-		else
-		{
-			//SetKeyTable(key, false);
-		}
-	}
-	else if (time + 500 > _hitElapsedTime && !isGood[key][i] && !isMiss[key][i])
-	{
-		missCount++;
-
-		setColor(color_green, color_red);
-		ScreenPrint(100, 3, 'SSiM', 4);
-		isMiss[key][i] = true;
-		isGood[key][i] = false;
-	}
-
-
-	/// 확인용
-	char convertMiss[20] = { 0 };
-	char convertCombo[20] = { 0 };
-
-	snprintf(convertCombo, sizeof(convertCombo), "%d", combo);
-	const char* constCombo = convertCombo;
-
-
-	snprintf(convertMiss, sizeof(convertMiss), "%d", missCount);
-	const char* constMiss = convertMiss;
-	setColor(color_yellow, color_blue);
-
-	ScreenPrint(90, 4, 'MOC', 6);
-	ScreenPrint(90, 6, 'SSIM', 4);
-	for (int i = 0; i < 5; i++)
-	{
-		ScreenPrint(100 + i, 4, convertCombo[i], 1);
-		ScreenPrint(100 + i, 6, convertMiss[i], 1);
-	}
-
-}
 
 void HitBox3(HitObject obj, int i)
 {
@@ -2252,29 +1352,22 @@ void HitBox3(HitObject obj, int i)
 	{
 		if (GetKeyTable(key) && !isGood[key][i])
 		{
-			//AudioPlay(tick, &channel);
-			//SetKeyTable(key, false);
 			isGood[key][i] = true;
 			setColor(color_green, color_red);
 			ScreenPrint(100, 2, 'DOOG', 4);
 			combo++;
-			/*SetKeyTable(LEFT, false);
-			SetKeyTable(RIGHT, false);
-			SetKeyTable(UP, false);
-			SetKeyTable(DOWN, false);*/
+
 			SetKeyTable(key, false);
 		}
 		else
 		{
-			/*SetKeyTable(LEFT, false);
-			SetKeyTable(RIGHT, false);
-			SetKeyTable(UP, false);
-			SetKeyTable(DOWN, false);*/
 			SetKeyTable(key, false);
 		}
 	}
 	else if (obj.time + 200 <= _hitElapsedTime && !isGood[key][i] && !isMiss[key][i])
 	{
+		AudioPlay(tick, &channel);
+
 		missCount++;
 		combo = 0;
 		setColor(color_red, color_green);
@@ -2301,15 +1394,6 @@ void HitBox3(HitObject obj, int i)
 	snprintf(convertMiss, sizeof(convertMiss), "%d", missCount);
 	const char* constMiss = convertMiss;
 	setColor(color_yellow, color_blue);
-
-	//ScreenPrint(90, 4, 'MOC', 6);
-	//ScreenPrint(90, 6, 'SSIM', 4);
-	//for (int i = 0; i < 5; i++)
-	{
-		//ScreenPrint(100 + i, 4, convertCombo[i], 1);
-		//ScreenPrint(100 + i, 6, convertMiss[i], 1);
-	}
-
 }
 
 
@@ -2681,22 +1765,18 @@ void GameLogic(int num, unsigned run_time, int number_hitobjects)
 		{
 			if (hitobjects[num][i].x == 64)
 			{
-				//HitBox2(hitobjects[num][i].time, i, LEFT);
 				ScreenDrawLeftArrow(posLeft, color_blue);
 			}
 			else if (hitobjects[num][i].x == 192)
 			{
-				//HitBox2(hitobjects[num][i].time, i, DOWN);
 				ScreenDrawDownArrow(posDown, color_green);
 			}
 			else if (hitobjects[num][i].x == 320)
 			{
-				//HitBox2(hitobjects[num][i].time, i, UP);
 				ScreenDrawUpArrow(posUp, color_red);
 			}
 			else if (hitobjects[num][i].x == 448)
 			{
-				//HitBox2(hitobjects[num][i].time, i, RIGHT);
 				ScreenDrawRightArrow(posRight, color_dark_yellow);
 			}
 		}
@@ -2864,10 +1944,7 @@ void InitGame()
 
 	ParcingNote();
 
-	
 
-	// 노트 위치 초기화
-	SetNotePosition(45);
 	// 타이틀에 출력할 아스키 아트 복사
 	//Copy("FMR_title.txt", 0);
 	Copy("subTitle2.txt", 1);
@@ -2989,98 +2066,4 @@ int main()
 	{
 		GameManager();
 	}
-
-
-	//// 콘솔 세팅
-	//initConsole();
-	//// 시간 초기화
-	//InitTime();
-
-	//// 오디오 시스템
-	//AudioSystem();
-	//
-	//ParcingNote();
-	//
-	//// 타이틀 음악 출력
-	//AudioPlay(maintheme, &channel2);
-
-	//// 노트 위치 초기화
-	//SetNotePosition(45);
-	//// 타이틀에 출력할 아스키 아트 복사
-	//Copy("FMR_title.txt", 0);
-	//Copy("subTitle2.txt", 1);
-
-
-	
-
-	// 선택지 저장 변수
-	//int selectedNum = GetSelectedMenu();
-	// 타이틀 음악 출력
-	//AudioPlay(maintheme, &channel2);
-	//// title & menu
-	//while (1)
-	//{
-	//	// title & title sound
-	//	UpdateTime();
-	//	UpdateMenuInput();
-	//	TitleRender(bTitle);
-	//		
-	//	
-
-	//	if (GetKeyTable(SPACE))
-	//	{
-	//		// 타이틀 음악 중단
-	//		AudioPlay(start, &channel);
-	//		FMOD_Channel_Stop(channel2);
-	//		SetKeyTable(SPACE, false);
-	//		// 동적할당 해제
-	//		free(copy_temp[0]);
-	//		free(copy_temp[1]);
-	//		break;
-	//	}
-
-	//}
-
-	//// menu
-	//while (1)
-	//{
-
-	//	UpdateTime();
-	//	UpdateMenuInput();
-
-	//	DrawMenu();
-	//	if (GetKeyTable(SPACE))
-	//	{
-	//		selectedNum = GetSelectedMenu();
-	//		SetKeyTable(SPACE, false);
-	//		break;
-	//	}
-
-	//}
-
-	//switch (selectedNum)
-	//{
-	//case 1:
-	//	Sleep(500);
-	//	AudioPlay(hypeboy, &channel2);
-	//	while (1)
-	//	{
-	//		gLoop1();			
-	//	}
-
-	//	break;
-	//case 2:
-	//	Sleep(500);
-	//	AudioPlay(fanclub, &channel2);
-	//	while (1)
-	//	{
-	//		
-	//		gLoop2();
-
-	//	}
-
-	//	break;
-
-	//}
-	
 }

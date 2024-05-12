@@ -1,5 +1,4 @@
 #include "fmod.h" // 소리 출력 
-#include "menu.h"
 #include <stdbool.h>
 
 FMOD_SYSTEM* fsystem;
@@ -14,7 +13,7 @@ void AudioSystem()
 	result = FMOD_System_Create(&fsystem, FMOD_VERSION);
 	if (result != FMOD_OK) return -1;
 
-	result = FMOD_System_Init(fsystem, 32, FMOD_INIT_NORMAL, NULL);
+	result = FMOD_System_Init(fsystem, 32, FMOD_INIT_NORMAL, 0);
 	if (result != FMOD_OK) return -1;
 }
 //result = FMOD_System_GetVersion(fsystem, &version);

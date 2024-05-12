@@ -1654,7 +1654,8 @@ void ParcingNote()
 			&hitobjects[0][num_hitobjects].y,
 			&hitobjects[0][num_hitobjects].time,
 			&hitobjects[0][num_hitobjects].type,
-			&hitobjects[0][num_hitobjects].hit_sound) != 5) {
+			&hitobjects[0][num_hitobjects].hit_sound) != 5) 
+		{
 			break;
 		}
 		num_hitobjects++;
